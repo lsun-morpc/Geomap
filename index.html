@@ -1,0 +1,2948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title></title>
+  <!-- Leaflet CSS and JavaScript -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Leaflet.heat plugin -->
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+  <style>
+    /* Set height of body and the document to 100% */
+body, html {
+  height: 100%;
+  margin: 0;
+  font-family: Arial;
+}
+
+/* Style tab links */
+.tablink {
+  background-color: #333;
+  color: white;
+  float: left;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  font-size: 17px;
+  width: calc(100%/3);
+}
+
+.tablink:hover {
+  background-color: #777;
+}
+
+/* Style the tab content (and add height:100% for full page content) */
+.tabcontent {
+  color: white;
+  display: none;
+  padding: 100px 20px;
+  height: 100%;
+}
+
+#Home {background-color: red;}
+#About {background-color: green;}
+#Contact {background-color: blue;}
+
+    #title {
+      display: flex;
+      justify-content: center; /* Centers horizontally */
+      height: 50px; /* Ensures full height of the viewport */
+      margin: 10px; /* Removes default margin */
+    }
+
+   #map-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two columns with equal width */
+    gap: 10px; /* Adjust the gap between the maps and distance-info as
+    needed   */
+    }
+
+    #map, #nyc-map, #nys-map {
+    height: 500px;
+    width: 100%; /* Each takes full width */
+    }
+
+    #nyc-map {
+    position: relative; /* Ensure position relative for absolute
+    positioning   */
+    }
+
+    #nys-map {
+    position: relative; /* Ensure position relative for absolute
+    positioning   */
+    display: none;
+    }
+
+    #toggleButton {
+      position: absolute;
+      top: 268px; /* Adjust top position as needed */
+      right: 30px; /* Adjust right position as needed */
+      background-color: rgba(255, 255, 255, 0.7); /* Transparent background     */
+      border: 0px solid #ccc;
+      padding: 10px;
+      border: 1px;
+      border-radius: 5px;
+      z-index: 1000; /* Higher than the map */
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      display: flex;
+    }
+    
+    #toggleButton:hover {
+    color: #DDD;
+    background-color: #555;
+    }
+
+    #input-form {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background-color: rgba(255, 255, 255, 0.7);
+      padding: 10px;
+      border: 1px;
+      border-radius: 5px;
+      z-index: 1000;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      display: flex;
+    }
+
+    .input-label {
+      display: inline-block;
+      margin-bottom: 25px;
+      margin-right: 10px;
+      font-weight: bold;
+    }
+
+    .input-field#city {
+      width: 100px;
+      margin-bottom: 10px;
+    }
+
+    .input-field#state {
+      width: 50px;
+      margin-bottom: 10px;
+    }
+
+    .input-field#comment {
+      width: 100%;
+      height: 60px;
+      margin-bottom: 10px;
+    }
+
+    .marker-tooltip {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 5px;
+    width: 200px; /* Adjust the width as needed */
+    color: black; /* Set text color to black */
+    }
+
+    .category {
+    margin-bottom: 5px;
+    }
+
+    .category-label {
+    }
+
+    .star-rating {
+    color: gold;
+    }
+
+    .star-rating .fa-star-o {
+    color: #ccc;
+    }
+
+    #add-marker-btn,
+    #add-destination-btn {
+      background-color: #DDD;
+      color: #000;
+      padding: 5px 5px;
+      border: 1px solid #DDD;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    #add-marker-btn:hover,
+    #add-destination-btn:hover {
+      background-color: #555;
+      color: #DDD;
+      border: 1px solid #DDD;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    #reset-button {
+      background-color: #000;
+      color: #DDD;
+      padding: 5px 5px;
+      border: 0px solid #DDD;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    #reset-button:hover {
+      background-color: #DDD;
+      color: #555;
+      border: 5px solid #DDD;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    #distance-info {
+      position: absolute;
+      bottom: 10px;
+      left: 30px;
+      background-color: rgba(255, 255, 255, 0.7);
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 1000;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      color: black;
+    }
+  </style>
+</head>
+<body>
+  <body>
+    <h1 id="title">Geomap</h1>
+  </body>
+<button class="tablink" onclick="openPage('Home', this, 'red')" id="defaultOpen">Home</button>
+<button class="tablink" onclick="openPage('About', this, 'green')">About</button>
+<button class="tablink" onclick="openPage('Contact', this, 'blue')">Contact</button>
+
+<div id="Home" class="tabcontent">
+  <h3>Home</h3>
+  <p>Home is where the heart is..</p>
+  <div id="map-container">
+    <div id="map">
+      <div id="input-form">
+  <div style="margin-right: 10px;">
+    <label class="input-label" for="city", style="color: #444">City:</label>
+    <select class="input-field" id="city" onchange="updateState()" placeholder="Enter city">
+      <option value="New York">New York</option>
+      <option value="Los Angeles">Los Angeles</option>
+      <option value="Chicago">Chicago</option>
+      <option value="Houston">Houston</option>
+      <option value="Phoenix">Phoenix</option>
+      <!-- Add more city options as needed -->
+    </select>
+  </div>
+
+  <div>
+    <label class="input-label" for="state", style="color: #444">State:</label>
+    <select class="input-field" id="state" onchange="updateCity()" placeholder="Enter state">
+      <option value="NY">NY</option>
+      <option value="CA">CA</option>
+      <option value="IL">IL</option>
+      <option value="TX">TX</option>
+      <option value="AZ">AZ</option>
+      <!-- Add more state options as needed -->
+    </select>
+  </div>
+
+  <button id="add-marker-btn" onclick="addCustomMarker()">+Marker</button>
+  <button id="add-destination-btn" onclick="addCustomDestination()">+Destination</button>
+  <button id="reset-button" class="reset-map-icon" title="Reset Zoom">Reset</button>
+
+<!-- Add more buttons for different cluster numbers as needed -->
+
+</div>
+    </div>
+  <body>
+    <button id="toggleButton">Toggle Maps</button>
+      <div id="nys-map"></div>
+      <div id="nyc-map"></div>
+    <script src="script.js"></script>
+  </body>
+    <div id="distance-info"></div>
+  </div>
+</div>
+
+<div id="About" class="tabcontent">
+  <h3>About</h3>
+  <p>Who we are and what we do.</p>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+.accordion {
+  background-color: #eee;
+  color: #444;
+  cursor: pointer;
+  padding: 18px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 15px;
+  transition: 0.4s;
+}
+
+.active, .accordion:hover {
+  background-color: #ccc;
+}
+
+.accordion:after {
+  content: '\002B';
+  color: #777;
+  font-weight: bold;
+  float: right;
+  margin-left: 5px;
+}
+
+.active:after {
+  content: "\2212";
+}
+
+.panel {
+  padding: 0 18px;
+  background-color: darkgrey;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.2s ease-out;
+}
+</style>
+</head>
+<body>
+
+<!--
+<h2>Accordion with symbols</h2>
+<p>In this example we have added a "plus" sign to each button. When the user clicks on the button, the "plus" sign is replaced with a "minus" sign.</p>
+-->
+
+
+<button class="accordion">Immortal Empire</button>
+<div class="panel">
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+.tag-cloud {
+  display: inline-block;
+  color: white;
+  padding: 8px 20px;
+  font-family: Arial;
+  border-radius: 25px;
+  background-color: #2196F3;
+  margin-top: 8px;
+}
+</style>
+</head>
+<body>
+
+<h1>Primary School</h1>
+
+<p>Marvelous</p>
+
+<span class="tag-cloud">Go 5d</span>
+<span class="tag-cloud">Billiards 5th</span>
+<span class="tag-cloud">Piano Level 2</span>
+<span class="tag-cloud">English Club President</span>
+<span class="tag-cloud">Pass of English Level Test</span>
+
+</body>
+</html>
+</div>
+
+<button class="accordion">Sleeping Empire</button>
+<div class="panel">
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+.tag-cloud {
+  display: inline-block;
+  color: white;
+  padding: 8px 20px;
+  font-family: Arial;
+  border-radius: 25px;
+  background-color: #2196F3;
+  margin-top: 8px;
+}
+</style>
+</head>
+<body>
+
+<h1>Middle School</h1>
+
+<p>Falling</p>
+
+<span class="tag-cloud">Go 6th</span>
+<span class="tag-cloud">Morning Exercise 1st</span>
+<span class="tag-cloud">Lu Xun Literature Prize 3rd</span>
+
+</body>
+</html>
+</div>
+
+<button class="accordion">Harmony Empire</button>
+<div class="panel">
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+.tag-cloud {
+  display: inline-block;
+  color: white;
+  padding: 8px 20px;
+  font-family: Arial;
+  border-radius: 25px;
+  background-color: #2196F3;
+  margin-top: 8px;
+}
+</style>
+</head>
+<body>
+
+<h1>High School</h1>
+
+<p>Spiritual</p>
+
+<span class="tag-cloud">Table Tennis Club President</span>
+<span class="tag-cloud">History Geography Politics 3 Straight As</span>
+
+</body>
+</html>
+</div>
+
+<button class="accordion">Rejuvenation Empire</button>
+<div class="panel">
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+.tag-cloud {
+  display: inline-block;
+  color: white;
+  padding: 8px 20px;
+  font-family: Arial;
+  border-radius: 25px;
+  background-color: #2196F3;
+  margin-top: 8px;
+}
+</style>
+</head>
+<body>
+
+<h1>Undergrad and Grad</h1>
+
+<p>Reviving</p>
+
+<span class="tag-cloud">Go 2nd</span>
+<span class="tag-cloud">Go Club President</span>
+<span class="tag-cloud">ELSO Club Vice President</span>
+<span class="tag-cloud">Dean's List</span>
+<span class="tag-cloud">International Student Ambassador</span>
+
+</body>
+</html>
+</div>
+
+<script>
+var acc = document.getElementsByClassName("accordion");
+var i;
+
+for (i = 0; i < acc.length; i++) {
+  acc[i].addEventListener("click", function() {
+    this.classList.toggle("active");
+    var panel = this.nextElementSibling;
+    if (panel.style.maxHeight) {
+      panel.style.maxHeight = null;
+    } else {
+      panel.style.maxHeight = panel.scrollHeight + "px";
+    }
+  });
+}
+</script>
+
+<br>
+<hr>
+<br>
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+table {
+  width: 100%;
+  border: 1px solid #ddd;
+}
+
+td {
+  padding: 16px;
+}
+
+td > table {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+}
+
+tr:nth-child(even) {
+  background-color: #eee;
+}
+</style>
+</head>
+<body>
+
+<details>
+  <summary>Nested Table</summary>
+<h2>Nested Table</h2>
+<p>An example of how to create a table inside a table:</p>
+
+<table>
+    <td>Vegetable</td>
+    <td>
+        <table>
+        <tr>
+          <td>Seasoning 1</td>
+          <td>Seasoning 2</td>
+        </tr>
+        <tr>
+          <td style="color: black;">Soy Sauce</td>
+          <td style="color: black;">Prickly Ash Oil</td>
+        </tr>
+        </table>
+
+        <br>
+
+        <table>
+        <tr>
+          <td>Condiment 1</td>
+          <td>Condiment 2</td>
+          <td>Condiment 3</td>
+        </tr>
+        <tr>
+          <td style="color: black;">Garlic</td>
+          <td style="color: black;">Cilantro</td>
+          <td style="color: black;">leek</td>
+        </tr>
+        </table>
+    </td>
+</table>
+
+<table>
+    <td>Meat</td>
+    <td>
+        <table>
+        <tr>
+          <td>Seasoning 1</td>
+          <td>Seasoning 2</td>
+          <td>Seasoning 3</td>
+        </tr>
+        <tr>
+          <td style="color: black;">Soy Sauce</td>
+          <td style="color: black;">Oyster Oil</td>
+          <td style="color: black;">Sesame Oil</td>
+        </tr>
+        </table>
+
+        <br>
+
+        <table>
+        <tr>
+          <td>Condiment 1</td>
+        </tr>
+        <tr>
+          <td style="color: black;">Onion</td>
+        </tr>
+        </table>
+    </td>
+</table>
+
+</details>
+
+</body>
+</html>
+
+<br>
+<hr>
+<br>
+
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* {
+  box-sizing: border-box;
+}
+
+.row {
+  margin-left:-5px;
+  margin-right:-5px;
+}
+
+.column {
+  float: left;
+  width: 50%;
+  padding: 5px;
+}
+
+/* Clearfix (clear floats) */
+.row::after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: 100%;
+  border: 1px solid #ddd;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.responsive-table {
+  width: 100%;
+  table-layout: auto;
+}
+
+th, td {
+  text-align: left;
+  padding: 16px;
+}
+
+tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+</style>
+</head>
+<body>
+
+<details>
+  <summary>Tables Side by Side</summary>
+<h2>Tables Side by Side</h2>
+<p>How to create side-by-side tables with CSS:</p>
+
+<div class="row">
+  <div class="column">
+    <div class="table-container" style="overflow-x:auto;">
+      <tr>East</tr>
+      <table class="responsive-table">
+        <tr>
+          <th>Cost</th>
+          <th>Feeling</th>
+          <th>Quality</th>
+          <th>Noise</th>
+          <th>View</th>
+          <th>Exercising</th>
+          <th>Privacy</th>
+        </tr>
+        <tr>
+          <td style="color: red;">3/5</td>
+          <td style="color: red;">3/5</td>
+          <td style="color: red;">3/5</td>
+          <td style="color: red;">3/5</td>
+          <td style="color: orange;">4/5</td>
+          <td style="color: green;">5/5</td>
+          <td style="color: green;">5/5</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+  <div class="column">
+    <div class="table-container" style="overflow-x:auto;">
+      <tr>West</tr>
+      <table class="responsive-table">
+        <tr>
+          <th>Cost</th>
+          <th>Feeling</th>
+          <th>Quality</th>
+          <th>Noise</th>
+          <th>View</th>
+          <th>Exercising</th>
+          <th>Privacy</th>
+        </tr>
+        <tr>
+          <td style="color: orange;">4/5</td>
+          <td style="color: orange;">4/5</td>
+          <td style="color: orange;">4/5</td>
+          <td style="color: orange;">4/5</td>
+          <td style="color: red;">3/5</td>
+          <td style="color: red;">3/5</td>
+          <td style="color: green;">5/5</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+</details>
+
+</body>
+</html>
+
+<br>
+<hr>
+<br>
+
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: 100%;
+  border: 1px solid #ddd;
+}
+
+th, td {
+  text-align: center;
+  padding: 16px;
+}
+
+th:first-child, td:first-child {
+  text-align: left;
+}
+
+tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.fa-check {
+  color: darkgreen;
+}
+
+.fa-remove {
+  color: red;
+}
+</style>
+</head>
+<body>
+
+<details>
+  <summary>Comparison Table</summary>
+<h2>Comparison Table</h2>
+<p>How to create side-by-side tables with CSS:</p>
+
+<table>
+  <tr>
+    <th style="width:50%">Features</th>
+    <th>East</th>
+    <th>West</th>
+  </tr>
+  <tr>
+    <td class="sample-text", style="color: black;">Aviation</td>
+    <td><i class="fa fa-check"></i></td>
+    <td><i class="fa fa-remove"></i></td>
+  </tr>
+  <tr>
+    <td class="sample-text", style="color: white;">Railway</td>
+    <td><i class="fa fa-check", style="color: darkgreen;"></i></td>
+    <td><i class="fa fa-remove"></i></td>
+  </tr>
+  <tr>
+    <td class="sample-text", style="color: black;">Bus</td>
+    <td><i class="fa fa-check"></i></td>
+    <td><i class="fa fa-check"></i></td>
+  </tr>
+  <tr>
+    <td class="sample-text", style="color: white;">Car</td>
+    <td><i class="fa fa-remove"></i></td>
+    <td><i class="fa fa-check", style="color: darkgreen;"></i></td>
+  </tr>
+</table>
+
+</body>
+</html>
+
+</details>
+
+</body>
+</html>
+
+</div>
+
+<div id="Contact" class="tabcontent">
+  <h3>Contact</h3>
+  <p>Get in touch, or swing by for a cup of coffee.</p>
+  <!DOCTYPE html>
+<html>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<style>
+body {margin:0;height:2000px;}
+
+.icon-bar {
+  position: fixed;
+  top: 435px;
+  -webkit-transform: translateY(-50%);
+  -ms-transform: translateY(-50%);
+  transform: translateY(-50%);
+}
+
+.icon-bar a {
+  display: block;
+  text-align: center;
+  padding: 16px;
+  transition: all 0.3s ease;
+  color: white;
+  font-size: 20px;
+}
+
+.icon-bar a:hover {
+  background-color: #000;
+}
+
+.facebook {
+  background: #3B5998;
+  color: white;
+}
+
+.twitter {
+  background: #55ACEE;
+  color: white;
+}
+
+.google {
+  background: #dd4b39;
+  color: white;
+}
+
+.linkedin {
+  background: #007bb5;
+  color: white;
+}
+
+.youtube {
+  background: #bb0000;
+  color: white;
+}
+
+.content {
+  margin-left: 75px;
+  font-size: 30px;
+}
+</style>
+<body>
+
+<div class="icon-bar">
+  <a href="#" class="facebook"><i class="fa fa-facebook"></i></a>
+  <a href="https://twitter.com/MORPC/status/1755293007157330063" class="twitter"><i class="fa fa-twitter"></i></a>
+  <a href="#" class="google"><i class="fa fa-google"></i></a>
+  <a href="#" class="linkedin"><i class="fa fa-linkedin"></i></a>
+  <a href="#" class="youtube"><i class="fa fa-youtube"></i></a>
+</div>
+
+<div class="content">
+  <h3></h3>
+  <p></p>
+  <p></p>
+
+  <!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.flip-card-container {
+  display: grid;
+  grid-template-columns: repeat(2, 2fr); /* Two columns */
+  gap: 20px; /* Gap between flip cards */
+}
+
+.flip-card {
+  background-color: transparent;
+  width: 500px;
+  height: 750px;
+  perspective: 1000px;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+}
+
+.flip-card:hover .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front, .flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.flip-card-front {
+  background-color: #bbb;
+  color: black;
+}
+
+.flip-card-back {
+  background-color: #2980b9;
+  color: white;
+  transform: rotateY(180deg);
+}
+
+/* Style for radar chart */
+.radarchart {
+  width: 100%;
+  height: 100%;
+}
+</style>
+</head>
+<body>
+
+<!--
+<h1>Card Flip with Text</h1>
+<h3>Hover over the image below:</h3>
+-->
+
+<!-- Flip Card Container -->
+<div class="flip-card-container">
+
+  <!-- 1-1 Card -->
+  <div class="flip-card">
+    <div class="flip-card-inner">
+      <div class="flip-card-front">
+        <img src="https://cdn-icons-png.flaticon.com/128/3916/3916882.png" alt="Avatar" style="width:500px;height:300px;">
+      </div>
+      <div class="flip-card-back">
+        <h1>Stony Brook</h1>
+        <p>NY</p>
+        <p></p>
+        <canvas id="radarChartSB" class="radarchart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1-2 Card -->
+  <div class="flip-card">
+    <div class="flip-card-inner">
+      <div class="flip-card-front">
+        <!-- Place the content for the front of the second flip card here -->
+        <img src="https://cdn-icons-png.flaticon.com/128/3916/3916882.png" alt="Avatar" style="width:500px;height:300px;">
+      </div>
+      <div class="flip-card-back">
+        <!-- Place the content for the back of the second flip card here -->
+        <h1>Ithaca</h1>
+        <p>NY</p>
+        <p></p>
+        <canvas id="radarChartITH" class="radarchart"></canvas>
+      </div>
+    </div>
+  </div>
+
+<!-- 2-1 Card -->
+  <div class="flip-card">
+    <div class="flip-card-inner">
+      <div class="flip-card-front">
+        <!-- Place the content for the front of the second flip card here -->
+        <img src="https://cdn-icons-png.flaticon.com/128/3916/3916882.png" alt="Avatar" style="width:500px;height:300px;">
+      </div>
+      <div class="flip-card-back">
+        <!-- Place the content for the back of the second flip card here -->
+        <h1>Washington DC</h1>
+        <p>DC</p>
+        <p></p>
+        <canvas id="radarChartDC" class="radarchart"></canvas>
+      </div>
+    </div>
+  </div>
+
+<!-- 2-2 Card -->
+  <div class="flip-card">
+    <div class="flip-card-inner">
+      <div class="flip-card-front">
+        <!-- Place the content for the front of the second flip card here -->
+        <img src="https://cdn-icons-png.flaticon.com/128/3916/3916882.png" alt="Avatar" style="width:500px;height:300px;">
+      </div>
+      <div class="flip-card-back">
+        <!-- Place the content for the back of the second flip card here -->
+        <h1>Columbus</h1>
+        <p>OH</p>
+        <canvas id="radarChartCLB" class="radarchart"></canvas>
+      </div>
+    </div>
+  </div>
+
+<!-- Script to initialize radar charts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+<script>
+  // Radar chart data and options for chart Stony Brook
+  const radarChartDataSB = {
+  labels: [
+    'Transportation',
+    'Safety',
+    'Health',
+    'Environment',
+  ],
+  datasets: [{
+    label: 'Stony Brook',
+    data: [80, 90, 90, 80],
+    fill: true,
+    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+    borderColor: 'rgb(255, 99, 132)',
+    pointBackgroundColor: 'rgb(255, 99, 132)',
+    pointBorderColor: '#fff',
+    pointHoverBackgroundColor: '#fff',
+    pointHoverBorderColor: 'rgb(255, 99, 132)'
+  }, {
+    label: 'Nation',
+    data: [75, 75, 75, 75],
+    fill: true,
+    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+    borderColor: 'rgb(54, 162, 235)',
+    pointBackgroundColor: 'rgb(54, 162, 235)',
+    pointBorderColor: '#fff',
+    pointHoverBackgroundColor: '#fff',
+    pointHoverBorderColor: 'rgb(54, 162, 235)'
+  }]
+};
+
+
+ // Radar chart data and options for chart Ithaca
+  const radarChartDataITH = {
+  labels: [
+    'Transportation',
+    'Safety',
+    'Health',
+    'Environment',
+  ],
+  datasets: [{
+    label: 'Ithaca',
+    data: [60, 90, 90, 90],
+    fill: true,
+    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+    borderColor: 'rgb(255, 99, 132)',
+    pointBackgroundColor: 'rgb(255, 99, 132)',
+    pointBorderColor: '#fff',
+    pointHoverBackgroundColor: '#fff',
+    pointHoverBorderColor: 'rgb(255, 99, 132)'
+  }, {
+    label: 'Nation',
+    data: [75, 75, 75, 75],
+    fill: true,
+    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+    borderColor: 'rgb(54, 162, 235)',
+    pointBackgroundColor: 'rgb(54, 162, 235)',
+    pointBorderColor: '#fff',
+    pointHoverBackgroundColor: '#fff',
+    pointHoverBorderColor: 'rgb(54, 162, 235)'
+  }]
+};
+
+
+ // Radar chart data and options for chart District of Columbia
+  const radarChartDataDC = {
+  labels: [
+    'Transportation',
+    'Safety',
+    'Health',
+    'Environment',
+  ],
+  datasets: [{
+    label: 'Washington',
+    data: [100, 70, 80, 70],
+    fill: true,
+    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+    borderColor: 'rgb(255, 99, 132)',
+    pointBackgroundColor: 'rgb(255, 99, 132)',
+    pointBorderColor: '#fff',
+    pointHoverBackgroundColor: '#fff',
+    pointHoverBorderColor: 'rgb(255, 99, 132)'
+  }, {
+    label: 'Nation',
+    data: [75, 75, 75, 75],
+    fill: true,
+    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+    borderColor: 'rgb(54, 162, 235)',
+    pointBackgroundColor: 'rgb(54, 162, 235)',
+    pointBorderColor: '#fff',
+    pointHoverBackgroundColor: '#fff',
+    pointHoverBorderColor: 'rgb(54, 162, 235)'
+  }]
+};
+
+ // Radar chart data and options for chart Columbus
+  const radarChartDataCLB = {
+  labels: [
+    'Transportation',
+    'Safety',
+    'Health',
+    'Environment',
+  ],
+  datasets: [{
+    label: 'Columbus',
+    data: [50, 70, 80, 70],
+    fill: true,
+    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+    borderColor: 'rgb(255, 99, 132)',
+    pointBackgroundColor: 'rgb(255, 99, 132)',
+    pointBorderColor: '#fff',
+    pointHoverBackgroundColor: '#fff',
+    pointHoverBorderColor: 'rgb(255, 99, 132)'
+  }, {
+    label: 'Nation',
+    data: [75, 75, 75, 75],
+    fill: true,
+    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+    borderColor: 'rgb(54, 162, 235)',
+    pointBackgroundColor: 'rgb(54, 162, 235)',
+    pointBorderColor: '#fff',
+    pointHoverBackgroundColor: '#fff',
+    pointHoverBorderColor: 'rgb(54, 162, 235)'
+  }]
+};
+
+  const radarChartOptions = {
+    scale: {
+      ticks: {
+        beginAtZero: true,
+        min: 0,
+        max: 100
+      }
+    }
+  };
+
+  // Initialize radar charts
+  const radarChartSB = new Chart(document.getElementById('radarChartSB'), {
+    type: 'radar',
+    data: radarChartDataSB,
+    options: radarChartOptions
+  });
+
+  const radarChartITH = new Chart(document.getElementById('radarChartITH'), {
+    type: 'radar',
+    data: radarChartDataITH,
+    options: radarChartOptions
+  });
+
+  const radarChartDC = new Chart(document.getElementById('radarChartDC'), {
+    type: 'radar',
+    data: radarChartDataDC,
+    options: radarChartOptions
+  });
+
+  const radarChartCLB = new Chart(document.getElementById('radarChartCLB'), {
+    type: 'radar',
+    data: radarChartDataCLB,
+    options: radarChartOptions
+  });
+</script>
+
+</div>
+
+</body>
+</html>
+
+</body>
+</html>
+
+</div>
+
+</body>
+</html>
+
+</div>
+
+
+
+
+<script>
+// Function to initialize Leaflet maps
+function initMaps() {
+  var maps = document.querySelectorAll('.tabcontent .map');
+  maps.forEach(function(map) {
+    var leafletMap = L.map(map).setView([51.505, -0.09], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(leafletMap);
+  });
+}
+
+// Function to open a tab
+function openPage(pageName, elmnt, color) {
+  var i, tabcontent, tablinks;
+  tabcontent = document.getElementsByClassName("tabcontent");
+  for (i = 0; i < tabcontent.length; i++) {
+    tabcontent[i].style.display = "none";
+  }
+  tablinks = document.getElementsByClassName("tablink");
+  for (i = 0; i < tablinks.length; i++) {
+    tablinks[i].style.backgroundColor = "";
+  }
+  document.getElementById(pageName).style.display = "block";
+  elmnt.style.backgroundColor = color;
+
+  // Initialize Leaflet maps when the tab becomes visible
+  initMaps();
+}
+
+// Get the element with id="defaultOpen" and click on it
+document.getElementById("defaultOpen").click();
+
+// Prevent accidental input addition when clicking the buttons
+document.getElementById('input-form').addEventListener('click', function(event) {
+  event.stopPropagation(); // Stop the event from bubbling up to the map
+  // Your marker addition logic
+});
+
+// Add a click event listener to the map to add markers
+map.on('click', function(event) {
+  // Your logic to add markers only when clicking on the map
+});
+</script>
+
+
+<script>
+  var map = L.map('map').setView([40.0, -98.0], 4);
+  var currentPopup = null;
+  var targetPoint = null;
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  var heatLayer = L.heatLayer([], {
+    radius: 20,
+    gradient: { 0.4: 'blue', 0.65: 'silver', 1: 'red' }
+  }).addTo(map);
+
+  var markers = [];
+  var destinationMarkers = [];
+  var distanceInfo = document.getElementById('distance-info');
+
+  var stateAbbreviations = {
+    "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA",
+    "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE", "Florida": "FL", "Georgia": "GA",
+    "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL", "Indiana": "IN", "Iowa": "IA",
+    "Kansas": "KS", "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
+    "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS", "Missouri": "MO",
+    "Montana": "MT", "Nebraska": "NE", "Nevada": "NV", "New Hampshire": "NH", "New Jersey": "NJ",
+    "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH",
+    "Oklahoma": "OK", "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC",
+    "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT", "Vermont": "VT",
+    "Virginia": "VA", "Washington": "WA", "West Virginia": "WV", "Wisconsin": "WI", "Wyoming": "WY"
+  };
+
+  function updateState() {
+    var city = document.getElementById('city').value;
+    var stateField = document.getElementById('state');
+
+    switch (city) {
+      case 'New York':
+        stateField.value = 'NY';
+        break;
+      case 'Los Angeles':
+        stateField.value = 'CA';
+        break;
+      case 'Chicago':
+        stateField.value = 'IL';
+        break;
+      case 'Houston':
+        stateField.value = 'TX';
+        break;
+      case 'Phoenix':
+        stateField.value = 'AZ';
+        break;
+      default:
+        stateField.value = '';
+        break;
+    }
+  }
+
+  function updateCity() {
+    var cityField = document.getElementById('city');
+    var state = document.getElementById('state').value;
+
+    switch (state) {
+      case 'NY':
+        cityField.value = 'New York';
+        break;
+      case 'CA':
+        cityField.value = 'Los Angeles';
+        break;
+      case 'IL':
+        cityField.value = 'Chicago';
+        break;
+      case 'TX':
+        cityField.value = 'Houston';
+        break;
+      case 'AZ':
+        cityField.value = 'Phoenix';
+        break;
+      default:
+        cityField.value = '';
+        break;
+    }
+  }
+
+  map.on('click', function(e) {
+    addMarker(e.latlng);
+    updateHeatmap();
+    updateDistanceInfo();
+  });
+
+  function addMarker(latlng) {
+    var marker = L.marker(latlng, { draggable: true }).addTo(map);
+    markers.push(marker);
+
+    marker.on('dragend', function(event) {
+      updateHeatmap();
+      updateDistanceInfo();
+    });
+
+    marker.on('click', function(event) {
+      showGeospatialInfo(marker);
+    });
+  }
+
+  function showGeospatialInfo(marker) {
+    var latlng = marker.getLatLng();
+    var nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`;
+
+    fetch(nominatimUrl)
+      .then(response => response.json())
+      .then(data => {
+        var city = data.address.city || data.address.village || data.address.town || data.address.hamlet;
+        var state = data.address.state || data.address.state_district || data.address.region;
+
+        var stateAbbreviation = stateAbbreviations[state] || state;
+
+        var popupContent = `
+          <div>
+            <h3>${city}, ${stateAbbreviation}</h3>
+            <hr>
+            <p1>Longitude: ${latlng.lng.toFixed(5)}</p1>
+            <br>
+            <p2>Latitude: ${latlng.lat.toFixed(5)}</p2>
+            <br>
+            <br>
+            <label class="input-label" for="comment">Comment:</label>
+            <textarea class="input-field" id="comment" placeholder="Add a comment"></textarea>
+            <button onclick="setComment(${markers.indexOf(marker)})">Add Comment</button>
+            <br>
+            <button onclick="deleteMarker(${markers.indexOf(marker)})">Delete</button>
+          </div>
+        `;
+
+        if (currentPopup) {
+          map.closePopup(currentPopup);
+        }
+
+        currentPopup = L.popup()
+          .setLatLng(latlng)
+          .setContent(popupContent)
+          .openOn(map);
+      })
+      .catch(error => {
+        console.error('Error fetching location information:', error);
+      });
+  }
+
+ function showGeospatialInform(destinationMarker) {
+    var latlng = destinationMarker.getLatLng();
+    var nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`;
+
+    fetch(nominatimUrl)
+      .then(response => response.json())
+      .then(data => {
+        var city = data.address.city || data.address.village || data.address.town || data.address.hamlet;
+        var state = data.address.state || data.address.state_district || data.address.region;
+
+        var stateAbbreviation = stateAbbreviations[state] || state;
+
+        var popupContent = `
+          <div>
+            <h3>${city}, ${stateAbbreviation}</h3>
+            <hr>
+            <p1>Longitude: ${latlng.lng.toFixed(5)}</p1>
+            <br>
+            <p2>Latitude: ${latlng.lat.toFixed(5)}</p2>
+            <br>
+            <br>
+            <label class="input-label" for="comment">Comment:</label>
+            <textarea class="input-field" id="comment" placeholder="Add a comment"></textarea>
+            <button onclick="setComment(${destinationMarkers.indexOf(destinationMarker)})">Add Comment</button>
+            <br>
+            <button onclick="deleteDestinationMarker(${destinationMarkers.indexOf(destinationMarker)})">Delete</button>
+          </div>
+        `;
+
+        if (currentPopup) {
+          map.closePopup(currentPopup);
+        }
+
+        currentPopup = L.popup()
+          .setLatLng(latlng)
+          .setContent(popupContent)
+          .openOn(map);
+      })
+      .catch(error => {
+        console.error('Error fetching location information:', error);
+      });
+  }
+
+  function setComment(index) {
+    var marker = markers[index];
+    var comment = document.getElementById('comment').value;
+
+    var popupContent = marker.getPopup().getContent();
+    popupContent = popupContent.replace(/<label class="input-label" for="comment">Comment:<\/label>\s*<input class="input-field" type="text" id="comment" value="([^"]*)"[^>]*>/, `<label class="input-label" for="comment">Comment:</label><input class="input-field" type="text" id="comment" value="${comment}" readonly>`);
+    marker.getPopup().setContent(popupContent);
+
+    map.closePopup(currentPopup);
+  }
+
+  function deleteMarker(index) {
+    var marker = markers[index];
+
+    if (currentPopup) {
+      map.closePopup(currentPopup);
+    }
+
+    map.removeLayer(marker);
+    markers.splice(index, 1);
+    updateHeatmap();
+    updateDistanceInfo();
+  }
+
+  function updateHeatmap() {
+    var latLngPoints = markers.map(function(marker) {
+      return marker.getLatLng();
+    });
+
+    var heatLatLngs = latLngPoints.map(function(latlng) {
+      return [latlng.lat, latlng.lng];
+    });
+
+    heatLayer.setLatLngs(heatLatLngs);
+  }
+
+  function addCustomMarker() {
+    var city = document.getElementById('city').value;
+    var state = document.getElementById('state').value;
+
+    if (city && state) {
+      var nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${city},${state}`;
+
+      fetch(nominatimUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (data.length > 0) {
+            var latlng = L.latLng(data[0].lat, data[0].lon);
+            addMarker(latlng);
+          } else {
+            console.error('Location not found');
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching location information:', error);
+        });
+    } else {
+      console.error('City and state are required');
+    }
+  }
+
+  function addCustomDestination() {
+    var city = document.getElementById('city').value;
+    var state = document.getElementById('state').value;
+
+    if (city && state) {
+      var nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${city},${state}`;
+
+      fetch(nominatimUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (data.length > 0) {
+            var latlng = L.latLng(data[0].lat, data[0].lon);
+            addDestinationMarker(latlng);
+          } else {
+            console.error('Destination location not found');
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching destination information:', error);
+        });
+    } else {
+      console.error('Destination city and state are required');
+    }
+  }
+
+  function addDestinationMarker(latlng) {
+    var destinationMarker = L.marker(latlng, { icon: createDestinationIcon(), draggable: true }).addTo(map);
+  destinationMarkers.push(destinationMarker);
+
+    destinationMarker.on('dragend', function(event) {
+      updateHeatmap();
+      updateDistanceInfo();
+    });
+
+    destinationMarker.on('click', function(event) {
+      showGeospatialInform(destinationMarker);
+    });
+  }
+
+  function createDestinationIcon() {
+    return L.divIcon({
+      className: 'destination-marker',
+      iconSize: [12, 12],
+      iconAnchor: [6, 6],
+      html: '<div style="background-color: red; border-radius: 50%; width: 12px; height: 12px;"></div>',
+    });
+  }
+
+  function deleteDestinationMarker(index) {
+    var destinationMarker = destinationMarkers[index];
+
+    if (currentPopup) {
+      map.closePopup(currentPopup);
+    }
+
+    map.removeLayer(destinationMarker);
+    destinationMarkers.splice(index, 1);
+    updateHeatmap();
+    updateDistanceInfo();
+  }
+
+  function updateDistanceInfo() {
+  if (destinationMarkers.length > 0) {
+    var distances = destinationMarkers.map(function(destinationMarker) {
+      var destinationLatLng = destinationMarker.getLatLng();
+      var totalDistance = markers.reduce(function(sum, marker) {
+        var blueMarker = marker.getLatLng();
+        var distance = blueMarker.distanceTo(destinationLatLng);
+        return sum + distance;
+      }, 0);
+
+      var totalDistanceMiles = totalDistance * 0.000621371; // Convert meters to miles
+      return totalDistanceMiles.toFixed(2) + ' miles';
+    });
+
+    distanceInfo.innerHTML = '<strong>Sum of Total Distances to Markers:</strong> ' + distances.join(', ');
+  } else {
+    distanceInfo.innerHTML = '<strong>No destination markers added.</strong>';
+  }
+}
+
+// Add this line to the script
+var PurpleLines = L.layerGroup().addTo(map);
+
+// Modify the updateHeatmap function
+function updateHeatmap() {
+  var latLngPoints = markers.map(function(marker) {
+    return marker.getLatLng();
+  });
+
+  var heatLatLngs = latLngPoints.map(function(latlng) {
+    return [latlng.lat, latlng.lng];
+  });
+
+  heatLayer.setLatLngs(heatLatLngs);
+
+  // Clear existing blue lines
+  PurpleLines.clearLayers();
+
+  // Draw lines between blue pins within 1 mile
+  for (var i = 0; i < markers.length; i++) {
+    for (var j = i + 1; j < markers.length; j++) {
+      var marker1 = markers[i].getLatLng();
+      var marker2 = markers[j].getLatLng();
+      var distance = marker1.distanceTo(marker2) * 0.000621371; // Convert meters to miles
+
+      if (distance <= 1) {
+        var line = L.polyline([marker1, marker2], { color: 'purple' });
+        PurpleLines.addLayer(line);
+      }
+    }
+  }
+}
+
+// Initialize New York State map
+var nysMap = L.map('nys-map').setView([40.0, -98.0], 4); // New York State coordinates and zoom level
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors'
+}).addTo(nysMap);
+
+// Define city data with ratings for different categories
+var cities = [
+  {
+    name: 'Cortland',
+    location: [42.6012, -76.1805],
+    ratings: {
+      Transportation: 2,
+      Safety: 5,
+      Health: 4,
+      Environment: 4
+    },
+    iconUrl: 'cortland-icon.png'
+  },
+  {
+    name: 'Rochester',
+    location: [43.1566, -77.6088],
+    ratings: {
+      Transportation: 4,
+      Safety: 3,
+      Health: 3,
+      Environment: 3
+    },
+    iconUrl: 'rochester-icon.png'
+  },
+  {
+    name: 'Pittsburgh',
+    location: [40.4406, -79.9959],
+    ratings: {
+      Transportation: 4,
+      Safety: 3,
+      Health: 3,
+      Environment: 4
+    },
+    iconUrl: 'pittsburgh-icon.png'
+  },
+  {
+    name: 'Albany',
+    location: [42.6526, -73.7562],
+    ratings: {
+      Transportation: 4,
+      Safety: 3,
+      Health: 3,
+      Environment: 3
+    },
+    iconUrl: 'albany-icon.png'
+  },
+  {
+    name: 'Indianapolis',
+    location: [39.7691, -86.1580],
+    ratings: {
+      Transportation: 4,
+      Safety: 3,
+      Health: 3,
+      Environment: 4
+    },
+    iconUrl: 'indianapolis-icon.png'
+  },
+   {
+    name: 'Chicago',
+    location: [41.8781, -87.6298],
+    ratings: {
+      Transportation: 5,
+      Safety: 3,
+      Health: 4,
+      Environment: 4
+    },
+    iconUrl: 'chicago-icon.png'
+  },
+  {
+    name: 'Raleigh',
+    location: [35.7796, -78.6382],
+    ratings: {
+      Transportation: 4,
+      Safety: 4,
+      Health: 4,
+      Environment: 4
+    },
+    iconUrl: 'raleigh-icon.png'
+  }
+];
+
+// Initialize markers array to keep track of markers
+var markers = [];
+
+// Function to remove all markers except the hovered one
+function removeMarker() {
+  markers.forEach(function(marker) {
+    if (marker !== hoveredMarker) {
+      nysMap.removeLayer(marker);
+    }
+  });
+  markers = [];
+}
+
+// Add event listener for map click
+nysMap.on('click', function(e) {
+  // Clear existing markers except the hovered one
+  removeMarker();
+
+  // Define the maximum distance for displaying cities (in meters)
+  var maxDistance = 100000; // Adjust this value as needed
+
+  // Loop through cities and display markers for those within the maximum distance
+  cities.forEach(function(city) {
+    var cityLocation = L.latLng(city.location[0], city.location[1]);
+    var clickedLocation = L.latLng(e.latlng.lat, e.latlng.lng);
+    var distance = cityLocation.distanceTo(clickedLocation);
+
+    // Display marker only if the city is within the maximum distance
+    if (distance <= maxDistance) {
+      // Generate HTML content for all categories based on the city's data
+      var categoriesHTML = '';
+      Object.keys(city.ratings).forEach(function(category) {
+        var starsHTML = '';
+        for (var i = 0; i < city.ratings[category]; i++) {
+          starsHTML += '<i class="fa fa-star star-rating"></i>'; // Yellow star
+        }
+        for (var j = city.ratings[category]; j < 5; j++) {
+          starsHTML += '<i class="fa fa-star-o star-rating"></i>'; // Empty star
+        }
+        categoriesHTML += '<div class="category"><span class="category-label">' + category + ': </span>' + starsHTML + '</div>';
+      });
+
+      // Add a popup with city name, ratings for all categories, and delete button
+      var popupContent = '<b>' + city.name + '</b><br>' + categoriesHTML + '<br>';
+
+      // Create a custom icon with popup content as tooltip
+      var icon = L.divIcon({
+        className: 'custom-icon',
+        html: '<div class="marker-tooltip">' + popupContent + '</div>',
+        iconSize: [30, 42],
+        iconAnchor: [15, 42],
+        popupAnchor: [0, -42],
+      });
+
+      // Create marker with custom icon
+      var marker = L.marker(city.location, { icon: icon }).addTo(nysMap);
+
+      // Add mouseover event to keep track of hovered marker
+      marker.on('mouseover', function() {
+        hoveredMarker = marker;
+      });
+
+      // Add mouseout event to reset hovered marker when the mouse leaves the marker
+      marker.on('mouseout', function() {
+        hoveredMarker = null;
+      });
+
+      // Add the marker to the markers array
+      markers.push(marker);
+    }
+  });
+});
+
+    function removeMarker() {
+  markers = markers.filter(function(marker) {
+    if (hoveredMarker && marker == hoveredMarker) {
+      marker.remove();
+      return false;
+    }
+    return true;
+  });
+}
+
+// Function to toggle the visibility of the maps
+document.getElementById('toggleButton').addEventListener('click', function() {
+  var nycMapDiv = document.getElementById('nyc-map');
+  var nysMapDiv = document.getElementById('nys-map');
+
+  if (nycMapDiv.style.display === 'none') {
+    nycMapDiv.style.display = 'block';
+    nysMapDiv.style.display = 'none';
+    nycMap.invalidateSize(); // Ensure the map is rendered correctly after display change
+  } else {
+    nycMapDiv.style.display = 'none';
+    nysMapDiv.style.display = 'block';
+    nysMap.invalidateSize(); // Ensure the map is rendered correctly after display change
+  }
+});
+
+ // Initialize New York City map
+  var nycMap = L.map('nyc-map').setView([40.0, -98.0], 4); // New York City coordinates and zoom level
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(nycMap);
+
+  // Coordinates of Boston
+  var BOSCoordinates = [42.3601, -71.0589];
+
+  // Add marker for Boston
+  var BOSMarker = L.marker(BOSCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Boston</b><br>England Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Boston marker
+  handleMarkerPopup(BOSMarker);
+
+
+  // Coordinates of Providence
+  var PVDCoordinates = [41.8240, -71.4128];
+
+  // Add marker for Providence
+  var PVDMarker = L.marker(PVDCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Providence</b><br>Manor Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Providence marker
+  handleMarkerPopup(PVDMarker);
+  
+
+  // Coordinates of Albany
+  var ALBCoordinates = [42.6526, -73.7562];
+
+  // Add marker for Albany
+  var ALBMarker = L.marker(ALBCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Albany</b><br>Empire Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Albany marker
+  handleMarkerPopup(ALBMarker);
+  
+  
+  // Coordinates of Syracuse
+  var SYRCoordinates = [43.0481, -76.1474];
+
+  // Add marker for Syracuse
+  var SYRMarker = L.marker(SYRCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Syracuse</b><br>Snow Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Syracuse marker
+  handleMarkerPopup(SYRMarker);
+  
+  
+  // Coordinates of Rochester
+  var ROCCoordinates = [43.1566, -77.6088];
+
+  // Add marker for Rochester
+  var ROCMarker = L.marker(ROCCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Rochester</b><br>Light Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Rochester marker
+  handleMarkerPopup(ROCMarker);
+  
+  
+  // Coordinates of Niagara Falls
+  var IAGCoordinates = [43.0962, -79.0377];
+
+  // Add marker for Niagara Falls
+  var IAGMarker = L.marker(IAGCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Niagara Falls</b><br>Hydroelectric Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Niagara Falls marker
+  handleMarkerPopup(IAGMarker);
+  
+  
+  // Coordinates of New York City
+  var NYCCoordinates = [40.7128, -74.0060];
+
+  // Add marker for New York City
+  var NYCMarker = L.marker(NYCCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>New York City</b><br>Financial Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for New York City marker
+  handleMarkerPopup(NYCMarker);
+
+
+  // Coordinates of Philadelphia
+  var PHICoordinates = [39.9526, -75.1652];
+
+  // Add marker for Philadelphia
+  var PHIMarker = L.marker(PHICoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Philadelphia</b><br>Revolution Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Philadelphia marker
+  handleMarkerPopup(PHIMarker);
+
+
+  // Coordinates of Pittsburgh
+  var PITCoordinates = [40.4406, -79.9959];
+
+  // Add marker for Pittsburgh
+  var PITMarker = L.marker(PITCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Pittsburgh</b><br>Steel Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Pittsburgh marker
+  handleMarkerPopup(PITMarker);
+
+
+  // Coordinates of Cleveland
+  var CLECoordinates = [41.4993, -81.6944];
+
+  // Add marker for Cleveland
+  var CLEMarker = L.marker(CLECoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Cleveland</b><br>Superman Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Cleveland marker
+  handleMarkerPopup(CLEMarker);
+  
+  
+  // Coordinates of Dayton
+  var DAYCoordinates = [39.7589, -84.1916];
+
+  // Add marker for Dayton
+  var DAYMarker = L.marker(DAYCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Dayton</b><br>Air Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Dayton marker
+  handleMarkerPopup(DAYMarker);
+
+
+  // Coordinates of Columbus
+  var CMHCoordinates = [39.9612, -82.9988];
+
+  // Add marker for Columbus
+  var CMHMarker = L.marker(CMHCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Columbus</b><br>Aviation Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Columbus marker
+  handleMarkerPopup(CMHMarker);
+  
+  
+  // Coordinates of Cincinnati
+  var CVGCoordinates = [39.1031, -84.5120];
+
+  // Add marker for Cincinnati
+  var CVGMarker = L.marker(CVGCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Cincinnati</b><br>Fancy Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Cincinnati marker
+  handleMarkerPopup(CVGMarker);
+  
+  
+  // Coordinates of Indianapolis
+  var INDCoordinates = [39.7684, -86.1581];
+
+  // Add marker for Indianapolis
+  var INDMarker = L.marker(INDCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Indianapolis</b><br>Interstate Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Indianapolis marker
+  handleMarkerPopup(INDMarker);
+
+
+  // Coordinates of Chicago
+  var ORDCoordinates = [41.8781, -87.6298];
+
+  // Add marker for Chicago
+  var ORDMarker = L.marker(ORDCoordinates)
+  .addTo(nycMap)
+  .bindPopup("<b>Chicago</b><br>Planning Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Chicago marker
+  handleMarkerPopup(ORDMarker);
+  
+
+  // Coordinates of Baltimore
+  var BWICoordinates = [39.2904, -76.6122];
+
+  // Add marker for Baltimore
+  var BWIMarker = L.marker(BWICoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Baltimore</b><br>Crime Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Baltimore marker
+  handleMarkerPopup(BWIMarker);
+
+
+  // Coordinates of Washington DC
+  var WashingtonDCCoordinates = [38.9072, -77.0369];
+
+  // Add marker for Washington DC
+  var WashingtonDCMarker = L.marker(WashingtonDCCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Washington DC</b><br>Political Capital of the   United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Washington DC marker
+  handleMarkerPopup(WashingtonDCMarker);
+
+
+   // Coordinates of Richmond
+  var RVACoordinates = [37.5407, -77.4360];
+
+  // Add marker for Richmond
+  var RVAMarker = L.marker(RVACoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Richmond</b><br>Slave Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Richmond marker
+  handleMarkerPopup(RVAMarker);
+
+
+  // Coordinates of Charleston
+  var CHSCoordinates = [38.3498, -81.6326];
+
+  // Add marker for Charleston
+  var CHSMarker = L.marker(CHSCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Charleston</b><br>Shanshui Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Charleston marker
+  handleMarkerPopup(CHSMarker);
+  
+  
+  // Coordinates of Raleigh
+  var RGHCoordinates = [35.7796, -78.6382];
+
+  // Add marker for Raleigh
+  var RGHMarker = L.marker(RGHCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Raleigh</b><br>Life Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Raleigh marker
+  handleMarkerPopup(RGHMarker);
+
+
+  // Coordinates of Atlanta
+  var ATLCoordinates = [33.7488, -84.3877];
+
+  // Add marker for Atlanta
+  var ATLMarker = L.marker(ATLCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Atlanta</b><br>Southern Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Atlanta marker
+  handleMarkerPopup(ATLMarker);
+
+
+  // Coordinates of Nashville
+  var NSHCoordinates = [36.1627, -86.7816];
+
+  // Add marker for Nashville
+  var NSHMarker = L.marker(NSHCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Nashville</b><br>Music Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Nashville marker
+  handleMarkerPopup(NSHMarker);
+
+
+  // Coordinates of Orlando
+  var ORLCoordinates = [28.5384, -81.3789];
+
+  // Add marker for Orlando
+  var ORLMarker = L.marker(ORLCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Orlando</b><br>Fun Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Orlando marker
+  handleMarkerPopup(ORLMarker);
+
+
+  // Coordinates of Miami
+  var MIACoordinates = [25.7617, -80.1918];
+
+  // Add marker for Miami
+  var MIAMarker = L.marker(MIACoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Miami</b><br>Beach Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Miami marker
+  handleMarkerPopup(MIAMarker);
+
+
+    // Coordinates of Boulder
+  var BDUCoordinates = [40.0150, -105.2705];
+
+  // Add marker for Boulder
+  var BDUMarker = L.marker(BDUCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Boulder</b><br>Geoscience Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Boulder marker
+  handleMarkerPopup(BDUMarker);
+  
+  
+  // Coordinates of Golden
+  var GLDCoordinates = [39.7555, -105.2211];
+
+  // Add marker for Golden
+  var GLDMarker = L.marker(GLDCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Golden</b><br>Mines Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Golden marker
+  handleMarkerPopup(GLDMarker);
+  
+  
+  // Coordinates of Denver
+  var DENCoordinates = [39.7392, -104.9903];
+
+  // Add marker for Denver
+  var DENMarker = L.marker(DENCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Denver</b><br>Golden Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Denver marker
+  handleMarkerPopup(DENMarker);
+  
+  
+  // Coordinates of Colorado Springs
+  var COSCoordinates = [38.8339, -104.8214];
+
+  // Add marker for Colorado Springs
+  var COSMarker = L.marker(COSCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Colorado Springs</b><br>Force Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Colorado Springs marker
+  handleMarkerPopup(COSMarker);
+  
+  
+  // Coordinates of Seattle
+  var SEACoordinates = [47.6061, -122.3328];
+
+  // Add marker for Seattle
+  var SEAMarker = L.marker(SEACoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Seattle</b><br>Space Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Seattle marker
+  handleMarkerPopup(SEAMarker);
+
+
+  // Coordinates of San Francisco
+  var SFOCoordinates = [37.7749, -122.4194];
+
+  // Add marker for San Francisco
+  var SFOMarker = L.marker(SFOCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>San Francisco</b><br>Slope Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for San Francisco marker
+  handleMarkerPopup(SFOMarker);
+
+
+  // Coordinates of Los Angeles
+  var LAXCoordinates = [34.0549, -118.2426];
+
+  // Add marker for Los Angeles
+  var LAXMarker = L.marker(LAXCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>Los Angeles</b><br>Movie Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for Los Angeles marker
+  handleMarkerPopup(LAXMarker);
+
+
+  // Coordinates of San Diego
+  var SANCoordinates = [32.7157, -117.1611];
+
+  // Add marker for San Diego
+  var SANMarker = L.marker(SANCoordinates)
+    .addTo(nycMap)
+    .bindPopup("<b>San Diego</b><br>Navy Capital of the United States");
+
+  // Function to handle marker popup behavior
+  function handleMarkerPopup(marker) {
+    marker.on('mouseover', function (e) {
+      this.openPopup();
+  });
+
+  marker.on('mouseout', function (e) {
+    // Check if the marker is not clicked
+    if (!marker.clicked) {
+      this.closePopup();
+    }
+  });
+
+  marker.on('click', function (e) {
+    // Toggle the clicked property
+    marker.clicked = !marker.clicked;
+    if (marker.clicked) {
+      this.openPopup();
+    } else {
+      this.closePopup();
+    }
+  });
+}
+
+  // Call the function to handle popup behavior for San Diego marker
+  handleMarkerPopup(SANMarker);
+
+
+  // Function to reset the default zoom for both maps
+  function resetZoom() {
+    // Reset zoom for the main map
+    map.setView([40.0, -98.0], 4);
+
+    // Reset zoom for the NYC map
+    nycMap.setView([40.0, -98.0], 4);
+
+    // Reset zoom for the NYS map
+    nysMap.setView([40.0, -98.0], 4);
+  }
+
+  // Add an event listener to the reset button
+  document.getElementById('reset-button').addEventListener('click', function() {
+    resetZoom();
+  });
+
+</script>
+
+</body>
+</html>
